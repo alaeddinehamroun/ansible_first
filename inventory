@@ -1,1 +1,2 @@
-20.249.18.81
+20.249.18.81 apache_package=apache2 php_package=libapache2-mod-php
+
