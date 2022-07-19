@@ -5,16 +5,24 @@
   pre_tasks:
   - name: install updates (CentOS)
     dnf:
-      update_only: yes
       update_cache: yes
+    changed_when: false
     when: ansible_distribution == "CentOS"
   - name: install updates (Ubuntu)
     apt:
-      upgrade: dist
       update_cache: yes
+    changed_when: false
     when: ansible_distribution == "Ubuntu"
 
+- hosts: all
+  become: true
+  tasks:
 
+  - name: add ssh key for simone
+    tags: always
+    authorized_key:
+      user: simone
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA186VX/jcySTWeqEfkOwDHMVQWM2kMg9cDPfG+/74o+ ansible"
 
 - hosts: web_servers
   become: true
@@ -26,7 +34,13 @@
         - libapache2-mod-php
       state: latest
     when: ansible_distribution == "Ubuntu"
-
+  - name: start httpd (CentOS)
+    tags: apache, centos, httpd
+    services:
+      name: httpd
+      state: started
+      enabled: yes
+    when: ansible_distribution == "CentOS"
   - name: install apache and php for CentOS servers
     dnf:
       name:
@@ -34,6 +48,22 @@
         - php
       state: latest
     when: ansible_distribution == "CentOS"
+  
+  - name: change e-mail address for admin
+    tags: apache,centos,httpd
+    lineinfile: 
+      path: /etc/httpd/conf/httpd.conf 
+      regex: '^ServerAdmin'
+      line: ServerAdmin somebody@somewhere.net
+    when: ansible_distribution == "CentOS"
+    register: httpd
+  - name: restart httpd (CentOS)
+    tags: apache,centos,httpd
+    service:
+      name: httpd
+      state: restarted
+    when: httpd.changed
+
   - name: copy default html file for site
     copy:
       src: default_site.html
